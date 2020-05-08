@@ -20,7 +20,7 @@
     "supervisor": "^0.7.1"
   },
   "devDependencies": {
-    "eslint": "3.4.0",
+    "eslint": "4.18.2",
     "nodemon": "^2.0.3"
   },
   "author": "Sagar Pansare",

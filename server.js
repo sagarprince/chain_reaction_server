@@ -39,6 +39,10 @@ Server.prototype.realTimeRoutes = function () {
       self.joinGame(socket, data);
     });
 
+    socket.on('remove_game', function (data) {
+      self.removeGame(data);
+    });
+
     socket.on('move', function (data) {
       self.move(socket, data);
     });
@@ -50,73 +54,96 @@ Server.prototype.realTimeRoutes = function () {
 };
 
 Server.prototype.createGame = function (socket, data) {
-  var roomId = this.generateRoomId();
-  this.rooms[roomId] = {};
-  this.rooms[roomId]['playersCount'] = data.playersCount;
-  this.rooms[roomId]['pTurnIndex'] = 0;
-  this.rooms[roomId]['players'] = Array();
-  this.rooms[roomId]['players'].push(data.player);
-  socket.join(roomId);
-  socket.emit('respond', {
-    status: 'created',
-    playersCount: data.playersCount,
-    roomId: roomId,
-  });
+  try {
+    var roomId = this.generateRoomId();
+    this.rooms[roomId] = {};
+    this.rooms[roomId]['playersCount'] = data.playersCount;
+    this.rooms[roomId]['pTurnIndex'] = 0;
+    this.rooms[roomId]['players'] = Array();
+    this.rooms[roomId]['players'].push(data.player);
+    socket.join(roomId);
+    socket.emit('respond', {
+      status: 'created',
+      playersCount: data.playersCount,
+      players: this.rooms[roomId]['players'],
+      roomId: roomId,
+    });
+  } catch (e) {
+    socket.emit('respond', {
+      status: 'exception',
+      message: 'Something went wrong, please try to create again.',
+    });
+  }
   console.log(this.rooms);
 };
 
 Server.prototype.joinGame = function (socket, data) {
-  var roomId = data.roomId;
-  var payload = {};
-  if (this.isRoomExist(roomId)) {
-    if (!this.isRoomFull(roomId)) {
-      if (!this.isPlayerNameExist(roomId, data.player.name)) {
-        if (!this.isPlayerColorExist(roomId, data.player.color)) {
-          this.rooms[roomId]['players'].push(data.player);
-          socket.join(roomId);
-          payload = {
-            status: 'joined',
-            roomId: roomId,
-            playersCount: this.rooms[roomId]['playersCount'],
-            players: this.rooms[roomId]['players'],
-          };
+  try {
+    var roomId = data.roomId;
+    var payload = {};
+    if (this.isRoomExist(roomId)) {
+      if (!this.isRoomFull(roomId)) {
+        if (!this.isPlayerNameExist(roomId, data.player.name)) {
+          if (!this.isPlayerColorExist(roomId, data.player.color)) {
+            this.rooms[roomId]['players'].push(data.player);
+            socket.join(roomId);
+            payload = {
+              status: 'joined',
+              roomId: roomId,
+              playersCount: this.rooms[roomId]['playersCount'],
+              players: this.rooms[roomId]['players'],
+            };
+          } else {
+            payload = {
+              status: 'error',
+              code: 'color_exist',
+              message: 'This color is already taken.',
+            };
+          }
         } else {
           payload = {
             status: 'error',
-            code: 'color_exist',
-            message: 'This color is already taken.',
+            code: 'name_exist',
+            message: 'This name is already taken.',
           };
         }
       } else {
         payload = {
           status: 'error',
-          code: 'name_exist',
-          message: 'This name is already taken.',
+          code: 'room_full',
+          message: 'This game room is already full.',
         };
       }
     } else {
       payload = {
         status: 'error',
-        code: 'room_full',
-        message: 'This game room is already full.',
+        code: 'invalid_room_id',
+        message: 'Please enter a valid room code.',
       };
     }
-  } else {
-    payload = {
-      status: 'error',
-      code: 'invalid_room_id',
-      message: 'Please enter a valid room code.',
-    };
-  }
-  socket.emit('respond', payload);
-  if (payload['status'] == 'joined') {
-    socket.broadcast.to(roomId).emit('joined', {
-      roomId: roomId,
-      playersCount: this.rooms[roomId]['playersCount'],
-      players: this.rooms[roomId]['players'],
+    socket.emit('respond', payload);
+    if (payload['status'] == 'joined') {
+      socket.broadcast.to(roomId).emit('joined', {
+        roomId: roomId,
+        playersCount: this.rooms[roomId]['playersCount'],
+        players: this.rooms[roomId]['players'],
+      });
+    }
+  } catch (e) {
+    socket.emit('respond', {
+      status: 'exception',
+      message: 'Something went wrong, please try to join again.',
     });
   }
   console.log(this.rooms);
+};
+
+Server.prototype.removeGame = function (data) {
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    delete this.rooms[roomId];
+  }
+  console.log('REMOVE GAME ', this.rooms);
 };
 
 Server.prototype.isRoomExist = function (roomId) {

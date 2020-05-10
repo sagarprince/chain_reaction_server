@@ -35,7 +35,7 @@ Server.prototype.realTimeRoutes = function () {
         'Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString()
       );
       socket.emit('ping', {});
-    }, 52000);
+    }, 25000);
 
     socket.on('create_game', function (data) {
       self.createGame(socket, data);

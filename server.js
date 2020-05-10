@@ -30,6 +30,9 @@ Server.prototype.realTimeRoutes = function () {
   var self = this;
   this.io.on('connection', function (socket) {
     console.log('connected :- ', socket.id);
+    setInterval(() => {
+      console.log('Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString());
+    }, 52000);
 
     socket.on('create_game', function (data) {
       self.createGame(socket, data);

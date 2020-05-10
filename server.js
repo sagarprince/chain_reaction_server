@@ -30,8 +30,11 @@ Server.prototype.realTimeRoutes = function () {
   var self = this;
   this.io.on('connection', function (socket) {
     console.log('connected :- ', socket.id);
-    setInterval(() => {
-      console.log('Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString());
+    var t1 = setInterval(() => {
+      console.log(
+        'Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString()
+      );
+      socket.emit('ping', {});
     }, 52000);
 
     socket.on('create_game', function (data) {
@@ -51,7 +54,10 @@ Server.prototype.realTimeRoutes = function () {
     });
 
     socket.on('disconnect', function () {
-      console.log('disconnect :- ', socket.id);
+      console.log('disconnect :- ', socket.id, t1);
+      if (t1) {
+        clearInterval(t1);
+      }
     });
   });
 };

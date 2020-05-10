@@ -54,7 +54,7 @@ Server.prototype.realTimeRoutes = function () {
     });
 
     socket.on('disconnect', function () {
-      console.log('disconnect :- ', socket.id, t1);
+      console.log('disconnect :- ', socket.id);
       if (t1) {
         clearInterval(t1);
       }

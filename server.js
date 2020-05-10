@@ -48,7 +48,7 @@ Server.prototype.realTimeRoutes = function () {
     });
 
     socket.on('disconnect', function () {
-      console.log('disconnect...');
+      console.log('disconnect :- ', socket.id);
     });
   });
 };

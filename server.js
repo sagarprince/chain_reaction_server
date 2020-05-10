@@ -30,43 +30,49 @@ Server.prototype.realTimeRoutes = function () {
   var self = this;
   this.io.on('connection', function (socket) {
     console.log('connected :- ', socket.id);
-    var t1 = setInterval(() => {
-      console.log(
-        'Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString()
-      );
-      socket.emit('ping', {});
-    }, 25000);
+    // var t1 = setInterval(() => {
+    //   console.log(
+    //     'Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString()
+    //   );
+    //   socket.emit('pingpong', {});
+    // }, 45000);
 
-    socket.on('create_game', function (data) {
-      self.createGame(socket, data);
+    socket.on('create_game', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args[0]);
+      let ackCallback = args.pop();
+      self.createGame(socket, data, ackCallback);
     });
 
-    socket.on('join_game', function (data) {
-      self.joinGame(socket, data);
+    socket.on('join_game', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args[0]);
+      let ackCallback = args.pop();
+      self.joinGame(socket, data, ackCallback);
     });
 
-    socket.on('remove_game', function (data) {
+    socket.on('remove_game', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
       self.removeGame(data);
     });
 
-    socket.on('move', function (data) {
+    socket.on('move', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
       self.move(socket, data);
-    });
-
-    socket.on('app_disconnect', function (data) {
-      console.log('APP DISCONNECT :- ', data, socket.id);
     });
 
     socket.on('disconnect', function () {
       console.log('disconnect :- ', socket.id);
-      if (t1) {
-        clearInterval(t1);
-      }
+      // if (t1) {
+      //   clearInterval(t1);
+      // }
     });
   });
 };
 
-Server.prototype.createGame = function (socket, data) {
+Server.prototype.createGame = function (socket, data, ackCallback) {
   try {
     var roomId = this.generateRoomId();
     this.rooms[roomId] = {};
@@ -75,14 +81,14 @@ Server.prototype.createGame = function (socket, data) {
     this.rooms[roomId]['players'] = Array();
     this.rooms[roomId]['players'].push(data.player);
     socket.join(roomId);
-    socket.emit('respond', {
+    ackCallback({
       status: 'created',
       playersCount: data.playersCount,
       players: this.rooms[roomId]['players'],
       roomId: roomId,
     });
   } catch (e) {
-    socket.emit('respond', {
+    ackCallback({
       status: 'exception',
       message: 'Something went wrong, please try to create again.',
     });
@@ -90,7 +96,7 @@ Server.prototype.createGame = function (socket, data) {
   console.log(this.rooms);
 };
 
-Server.prototype.joinGame = function (socket, data) {
+Server.prototype.joinGame = function (socket, data, ackCallback) {
   try {
     var roomId = data.roomId;
     var payload = {};
@@ -134,7 +140,6 @@ Server.prototype.joinGame = function (socket, data) {
         message: 'Please enter a valid room code.',
       };
     }
-    socket.emit('respond', payload);
     if (payload['status'] == 'joined') {
       socket.broadcast.to(roomId).emit('joined', {
         roomId: roomId,
@@ -142,8 +147,9 @@ Server.prototype.joinGame = function (socket, data) {
         players: this.rooms[roomId]['players'],
       });
     }
+    ackCallback(payload);
   } catch (e) {
-    socket.emit('respond', {
+    ackCallback({
       status: 'exception',
       message: 'Something went wrong, please try to join again.',
     });
@@ -192,8 +198,6 @@ Server.prototype.move = function (socket, data) {
   var roomId = data.roomId;
   console.log(data);
   console.log(roomId);
-  console.log(data.pos);
-  console.log(data.player);
   if (this.isRoomExist(roomId)) {
     socket.broadcast.to(roomId).emit('on_played_move', {
       roomId: roomId,

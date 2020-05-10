@@ -53,6 +53,10 @@ Server.prototype.realTimeRoutes = function () {
       self.move(socket, data);
     });
 
+    socket.on('app_disconnect', function (data) {
+      console.log('APP DISCONNECT :- ', data, socket.id);
+    });
+
     socket.on('disconnect', function () {
       console.log('disconnect :- ', socket.id);
       if (t1) {

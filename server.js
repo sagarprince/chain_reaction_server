@@ -48,6 +48,8 @@ Server.prototype.realTimeRoutes = function () {
     socket.on('reconnected_game', function () {
       let args = Array.prototype.slice.call(arguments);
       let data = args.pop();
+      console.log('reconnected_game');
+      console.log(data);
       self.reconnectedGame(socket, data);
     });
 

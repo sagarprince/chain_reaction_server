@@ -141,6 +141,7 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
       };
     }
     if (payload['status'] == 'joined') {
+      console.log('joined :- ', socket.id);
       socket.broadcast.to(roomId).emit('joined', {
         roomId: roomId,
         playersCount: this.rooms[roomId]['playersCount'],

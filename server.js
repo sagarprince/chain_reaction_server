@@ -30,12 +30,6 @@ Server.prototype.realTimeRoutes = function () {
   var self = this;
   this.io.on('connection', function (socket) {
     console.log('connected :- ', socket.id);
-    // var t1 = setInterval(() => {
-    //   console.log(
-    //     'Socket ID ' + socket.id + ' PING AT ' + new Date().toTimeString()
-    //   );
-    //   socket.emit('pingpong', {});
-    // }, 45000);
 
     socket.on('create_game', function () {
       let args = Array.prototype.slice.call(arguments);
@@ -49,6 +43,12 @@ Server.prototype.realTimeRoutes = function () {
       let data = JSON.parse(args[0]);
       let ackCallback = args.pop();
       self.joinGame(socket, data, ackCallback);
+    });
+
+    socket.on('reconnected_game', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = args.pop();
+      self.reconnectedGame(socket, data);
     });
 
     socket.on('remove_game', function () {
@@ -65,9 +65,6 @@ Server.prototype.realTimeRoutes = function () {
 
     socket.on('disconnect', function () {
       console.log('disconnect :- ', socket.id);
-      // if (t1) {
-      //   clearInterval(t1);
-      // }
     });
   });
 };
@@ -141,7 +138,6 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
       };
     }
     if (payload['status'] == 'joined') {
-      console.log('joined :- ', socket.id);
       socket.broadcast.to(roomId).emit('joined', {
         roomId: roomId,
         playersCount: this.rooms[roomId]['playersCount'],
@@ -156,6 +152,14 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
     });
   }
   console.log(this.rooms);
+};
+
+Server.prototype.reconnectedGame = function (socket, data) {
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    socket.join(roomId);
+    console.log('Reconnected Game ', roomId, socket.id);
+  }
 };
 
 Server.prototype.removeGame = function (data) {

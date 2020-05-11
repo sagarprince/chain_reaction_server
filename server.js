@@ -46,15 +46,9 @@ Server.prototype.realTimeRoutes = function () {
     });
 
     socket.on('reconnected_game', function () {
-      try {
-        let args = Array.prototype.slice.call(arguments);
-        let data = args.pop();
-        console.log('reconnected_game');
-        console.log(data);
-        self.reconnectedGame(socket, data);
-      } catch (e) {
-        console.log('Exception 1 ', e);
-      }
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
+      self.reconnectedGame(socket, data);
     });
 
     socket.on('remove_game', function () {
@@ -161,18 +155,10 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
 };
 
 Server.prototype.reconnectedGame = function (socket, data) {
-  try {
-    console.log('Into reconnectedGame function');
-    var roomId = data.roomId;
-    console.log('Into reconnectedGame function ', roomId);
-    if (this.isRoomExist(roomId)) {
-      console.log('Into reconnectedGame function isRoomExist ', roomId);
-      console.log('Reconnected Game 1 ', roomId, socket.id);
-      socket.join(roomId);
-      console.log('Reconnected Game 2 ', roomId, socket.id);
-    }
-  } catch (e) {
-    console.log('Exception 2 ', e);
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    socket.join(roomId);
+    console.log('Reconnected Game ', roomId, socket.id);
   }
 };
 

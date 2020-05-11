@@ -162,10 +162,14 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
 
 Server.prototype.reconnectedGame = function (socket, data) {
   try {
+    console.log('Into reconnectedGame function');
     var roomId = data.roomId;
+    console.log('Into reconnectedGame function ', roomId);
     if (this.isRoomExist(roomId)) {
+      console.log('Into reconnectedGame function isRoomExist ', roomId);
+      console.log('Reconnected Game 1 ', roomId, socket.id);
       socket.join(roomId);
-      console.log('Reconnected Game ', roomId, socket.id);
+      console.log('Reconnected Game 2 ', roomId, socket.id);
     }
   } catch (e) {
     console.log('Exception 2 ', e);

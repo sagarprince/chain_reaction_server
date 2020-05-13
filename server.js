@@ -1,5 +1,8 @@
 'use strict';
 
+var ip = require('ip');
+var _ = require('lodash');
+
 function Server() {
   this.rooms = {};
   this.express = require('express');
@@ -14,7 +17,13 @@ Server.prototype.setConfiguration = function () {
 
 Server.prototype.start = function () {
   this.httpServer.listen(this.app.get('port'));
-  console.log('Server Started On Port : ' + this.app.get('port'));
+
+  console.log(
+    'Server Running with IP Address ' +
+      ip.address() +
+      ' and Port ' +
+      this.app.get('port')
+  );
   this.realTimeRoutes();
 };
 
@@ -103,11 +112,23 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
           if (!this.isPlayerColorExist(roomId, data.player.color)) {
             this.rooms[roomId]['players'].push(data.player);
             socket.join(roomId);
+
+            let playersCount = this.rooms[roomId]['playersCount'];
+            let players = this.rooms[roomId]['players'];
+
+            // Shuffle Players List Cause Each Player Randomly Gets First Chance When Game Started.
+            if (players.length === playersCount) {
+              console.log('Before Shuffle ', players);
+              players = _.shuffle(players);
+              console.log('After Shuffle ', players);
+              this.rooms[roomId]['players'] = players;
+            }
+
             payload = {
               status: 'joined',
               roomId: roomId,
-              playersCount: this.rooms[roomId]['playersCount'],
-              players: this.rooms[roomId]['players'],
+              playersCount: playersCount,
+              players: players,
             };
           } else {
             payload = {

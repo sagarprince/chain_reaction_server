@@ -15,6 +15,8 @@
     "express-json": "^1.0.0",
     "express-load": "^1.1.15",
     "express-session": "^1.11.3",
+    "ip": "^1.1.5",
+    "lodash": "^4.17.15",
     "serve-favicon": "^2.3.0",
     "socket.io": "^1.7.4",
     "supervisor": "^0.7.1"

@@ -35,6 +35,19 @@ Server.prototype.generateRoomId = function () {
   return roomId;
 };
 
+Server.prototype.createMatrix = function (rows, cols) {
+  var i,
+    j,
+    matrix = [];
+  for (i = 0; i < rows; i++) {
+    matrix[i] = [];
+    for (j = 0; j < cols; j++) {
+      matrix[i].push('');
+    }
+  }
+  return matrix;
+};
+
 Server.prototype.realTimeRoutes = function () {
   var self = this;
   this.io.on('connection', function (socket) {
@@ -72,6 +85,12 @@ Server.prototype.realTimeRoutes = function () {
       self.move(socket, data);
     });
 
+    socket.on('set_matrix', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
+      self.setMatrix(data);
+    });
+
     socket.on('disconnect', function () {
       console.log('disconnect :- ', socket.id);
     });
@@ -83,7 +102,7 @@ Server.prototype.createGame = function (socket, data, ackCallback) {
     var roomId = this.generateRoomId();
     this.rooms[roomId] = {};
     this.rooms[roomId]['playersCount'] = data.playersCount;
-    this.rooms[roomId]['pTurnIndex'] = 0;
+    this.rooms[roomId]['matrix'] = this.createMatrix(9, 6);
     this.rooms[roomId]['players'] = Array();
     this.rooms[roomId]['players'].push(data.player);
     socket.join(roomId);
@@ -93,13 +112,20 @@ Server.prototype.createGame = function (socket, data, ackCallback) {
       players: this.rooms[roomId]['players'],
       roomId: roomId,
     });
+    console.log(
+      'Room Created :- ',
+      roomId,
+      'No Of Players :- ',
+      data.playersCount,
+      'With Player Name :- ',
+      data.player.name
+    );
   } catch (e) {
     ackCallback({
       status: 'exception',
       message: 'Something went wrong, please try to create again.',
     });
   }
-  console.log(this.rooms);
 };
 
 Server.prototype.joinGame = function (socket, data, ackCallback) {
@@ -118,9 +144,7 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
 
             // Shuffle Players List Cause Each Player Randomly Gets First Chance When Game Started.
             if (players.length === playersCount) {
-              console.log('Before Shuffle ', players);
               players = _.shuffle(players);
-              console.log('After Shuffle ', players);
               this.rooms[roomId]['players'] = players;
             }
 
@@ -130,6 +154,13 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
               playersCount: playersCount,
               players: players,
             };
+
+            console.log(
+              'Room Joined :- ',
+              roomId,
+              'Name :- ',
+              data.player.name
+            );
           } else {
             payload = {
               status: 'error',
@@ -172,7 +203,6 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
       message: 'Something went wrong, please try to join again.',
     });
   }
-  console.log(this.rooms);
 };
 
 Server.prototype.reconnectedGame = function (socket, data) {
@@ -222,14 +252,21 @@ Server.prototype.isPlayerColorExist = function (roomId, color) {
 
 Server.prototype.move = function (socket, data) {
   var roomId = data.roomId;
-  console.log(data);
-  console.log(roomId);
   if (this.isRoomExist(roomId)) {
     socket.broadcast.to(roomId).emit('on_played_move', {
       roomId: roomId,
       pos: data.pos,
       player: data.player,
     });
+  }
+};
+
+Server.prototype.setMatrix = function (data) {
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    console.log('SET MATRIX');
+    this.rooms[roomId]['matrix'] = data.matrix;
+    console.table(this.rooms[roomId]['matrix']);
   }
 };
 

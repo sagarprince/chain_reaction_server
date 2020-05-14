@@ -27,27 +27,6 @@ Server.prototype.start = function () {
   this.realTimeRoutes();
 };
 
-Server.prototype.generateRoomId = function () {
-  var roomId = Math.floor(10000 + Math.random() * 90000);
-  if (roomId in this.rooms) {
-    roomId = generateRoomId();
-  }
-  return roomId;
-};
-
-Server.prototype.createMatrix = function (rows, cols) {
-  var i,
-    j,
-    matrix = [];
-  for (i = 0; i < rows; i++) {
-    matrix[i] = [];
-    for (j = 0; j < cols; j++) {
-      matrix[i].push('');
-    }
-  }
-  return matrix;
-};
-
 Server.prototype.realTimeRoutes = function () {
   var self = this;
   this.io.on('connection', function (socket) {
@@ -67,16 +46,10 @@ Server.prototype.realTimeRoutes = function () {
       self.joinGame(socket, data, ackCallback);
     });
 
-    socket.on('reconnected_game', function () {
+    socket.on('rejoin_game', function () {
       let args = Array.prototype.slice.call(arguments);
       let data = JSON.parse(args.pop());
-      self.reconnectedGame(socket, data);
-    });
-
-    socket.on('remove_game', function () {
-      let args = Array.prototype.slice.call(arguments);
-      let data = JSON.parse(args.pop());
-      self.removeGame(data);
+      self.reJoinGame(socket, data);
     });
 
     socket.on('move', function () {
@@ -85,10 +58,16 @@ Server.prototype.realTimeRoutes = function () {
       self.move(socket, data);
     });
 
-    socket.on('set_matrix', function () {
+    socket.on('copy_matrix_board', function () {
       let args = Array.prototype.slice.call(arguments);
       let data = JSON.parse(args.pop());
-      self.setMatrix(data);
+      self.copyMatrixBoard(data);
+    });
+
+    socket.on('remove_game', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
+      self.removeGame(data);
     });
 
     socket.on('disconnect', function () {
@@ -97,18 +76,55 @@ Server.prototype.realTimeRoutes = function () {
   });
 };
 
+Server.prototype.generateRoomId = function () {
+  var roomId = Math.floor(10000 + Math.random() * 90000);
+  if (roomId in this.rooms) {
+    roomId = generateRoomId();
+  }
+  return roomId;
+};
+
+Server.prototype.isRoomExist = function (roomId) {
+  var room = this.rooms[roomId];
+  return !room ? false : true;
+};
+
+Server.prototype.isRoomFull = function (roomId) {
+  var room = this.rooms[roomId];
+  var playersLimit = room['playersLimit'];
+  var totalPlayers = room['players'].length;
+  return playersLimit === totalPlayers ? true : false;
+};
+
+Server.prototype.isPlayerNameExist = function (roomId, name) {
+  var players = this.rooms[roomId]['players'];
+  var index = players.findIndex((p) => {
+    return (
+      p.name.toLowerCase().replace(/\s/g, '') ===
+      name.toLowerCase().replace(/\s/g, '')
+    );
+  });
+  return index > -1;
+};
+
+Server.prototype.isPlayerColorExist = function (roomId, color) {
+  var players = this.rooms[roomId]['players'];
+  var index = players.findIndex((p) => p.color === color);
+  return index > -1;
+};
+
 Server.prototype.createGame = function (socket, data, ackCallback) {
   try {
     var roomId = this.generateRoomId();
     this.rooms[roomId] = {};
-    this.rooms[roomId]['playersCount'] = data.playersCount;
-    this.rooms[roomId]['matrix'] = this.createMatrix(9, 6);
+    this.rooms[roomId]['playersLimit'] = data.playersLimit;
+    this.rooms[roomId]['matrix'] = [];
     this.rooms[roomId]['players'] = Array();
     this.rooms[roomId]['players'].push(data.player);
     socket.join(roomId);
     ackCallback({
       status: 'created',
-      playersCount: data.playersCount,
+      playersLimit: data.playersLimit,
       players: this.rooms[roomId]['players'],
       roomId: roomId,
     });
@@ -116,7 +132,7 @@ Server.prototype.createGame = function (socket, data, ackCallback) {
       'Room Created :- ',
       roomId,
       'No Of Players :- ',
-      data.playersCount,
+      data.playersLimit,
       'With Player Name :- ',
       data.player.name
     );
@@ -139,11 +155,11 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
             this.rooms[roomId]['players'].push(data.player);
             socket.join(roomId);
 
-            let playersCount = this.rooms[roomId]['playersCount'];
+            let playersLimit = this.rooms[roomId]['playersLimit'];
             let players = this.rooms[roomId]['players'];
 
             // Shuffle Players List Cause Each Player Randomly Gets First Chance When Game Started.
-            if (players.length === playersCount) {
+            if (players.length === playersLimit) {
               players = _.shuffle(players);
               this.rooms[roomId]['players'] = players;
             }
@@ -151,7 +167,7 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
             payload = {
               status: 'joined',
               roomId: roomId,
-              playersCount: playersCount,
+              playersLimit: playersLimit,
               players: players,
             };
 
@@ -190,14 +206,16 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
       };
     }
     if (payload['status'] == 'joined') {
+      console.log(this.rooms[roomId]);
       socket.broadcast.to(roomId).emit('joined', {
         roomId: roomId,
-        playersCount: this.rooms[roomId]['playersCount'],
+        playersLimit: this.rooms[roomId]['playersLimit'],
         players: this.rooms[roomId]['players'],
       });
     }
     ackCallback(payload);
   } catch (e) {
+    console.log(e);
     ackCallback({
       status: 'exception',
       message: 'Something went wrong, please try to join again.',
@@ -205,49 +223,12 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
   }
 };
 
-Server.prototype.reconnectedGame = function (socket, data) {
+Server.prototype.reJoinGame = function (socket, data) {
   var roomId = data.roomId;
   if (this.isRoomExist(roomId)) {
     socket.join(roomId);
     console.log('Reconnected Game ', roomId, socket.id);
   }
-};
-
-Server.prototype.removeGame = function (data) {
-  var roomId = data.roomId;
-  if (this.isRoomExist(roomId)) {
-    delete this.rooms[roomId];
-  }
-  console.log('REMOVE GAME ', this.rooms);
-};
-
-Server.prototype.isRoomExist = function (roomId) {
-  var room = this.rooms[roomId];
-  return !room ? false : true;
-};
-
-Server.prototype.isRoomFull = function (roomId) {
-  var room = this.rooms[roomId];
-  var playersCount = room['playersCount'];
-  var totalPlayers = room['players'].length;
-  return playersCount === totalPlayers ? true : false;
-};
-
-Server.prototype.isPlayerNameExist = function (roomId, name) {
-  var players = this.rooms[roomId]['players'];
-  var index = players.findIndex((p) => {
-    return (
-      p.name.toLowerCase().replace(/\s/g, '') ===
-      name.toLowerCase().replace(/\s/g, '')
-    );
-  });
-  return index > -1;
-};
-
-Server.prototype.isPlayerColorExist = function (roomId, color) {
-  var players = this.rooms[roomId]['players'];
-  var index = players.findIndex((p) => p.color === color);
-  return index > -1;
 };
 
 Server.prototype.move = function (socket, data) {
@@ -261,13 +242,21 @@ Server.prototype.move = function (socket, data) {
   }
 };
 
-Server.prototype.setMatrix = function (data) {
+Server.prototype.copyMatrixBoard = function (data) {
   var roomId = data.roomId;
   if (this.isRoomExist(roomId)) {
-    console.log('SET MATRIX');
+    console.log('COPY MATRIX BOARD..');
     this.rooms[roomId]['matrix'] = data.matrix;
     console.table(this.rooms[roomId]['matrix']);
   }
+};
+
+Server.prototype.removeGame = function (data) {
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    delete this.rooms[roomId];
+  }
+  console.log('REMOVE GAME ', this.rooms);
 };
 
 const server = new Server();

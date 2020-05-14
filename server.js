@@ -64,10 +64,16 @@ Server.prototype.realTimeRoutes = function () {
       self.copyMatrixBoard(data);
     });
 
+    socket.on('remove_player_from_game', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
+      self.removePlayerFromGame(socket, data);
+    });
+
     socket.on('remove_game', function () {
       let args = Array.prototype.slice.call(arguments);
       let data = JSON.parse(args.pop());
-      self.removeGame(data);
+      self.removeGame(socket, data);
     });
 
     socket.on('disconnect', function () {
@@ -206,7 +212,6 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
       };
     }
     if (payload['status'] == 'joined') {
-      console.log(this.rooms[roomId]);
       socket.broadcast.to(roomId).emit('joined', {
         roomId: roomId,
         playersLimit: this.rooms[roomId]['playersLimit'],
@@ -215,7 +220,6 @@ Server.prototype.joinGame = function (socket, data, ackCallback) {
     }
     ackCallback(payload);
   } catch (e) {
-    console.log(e);
     ackCallback({
       status: 'exception',
       message: 'Something went wrong, please try to join again.',
@@ -251,10 +255,30 @@ Server.prototype.copyMatrixBoard = function (data) {
   }
 };
 
-Server.prototype.removeGame = function (data) {
+Server.prototype.removePlayerFromGame = function (socket, data) {
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    var player = data.player;
+    var players = this.rooms[roomId]['players'];
+    var index = players.findIndex((p) => p['color'] == player);
+    if (index > -1) {
+      players.splice(index, 1);
+      var payload = {
+        roomId: roomId,
+        players: players
+      };
+      socket.broadcast.to(roomId).emit('on_player_removed', payload);
+    }
+  }
+};
+
+Server.prototype.removeGame = function (socket, data) {
   var roomId = data.roomId;
   if (this.isRoomExist(roomId)) {
     delete this.rooms[roomId];
+    socket.broadcast.to(roomId).emit('on_game_removed', {
+      status: 'success'
+    });
   }
   console.log('REMOVE GAME ', this.rooms);
 };

@@ -249,9 +249,9 @@ Server.prototype.move = function (socket, data) {
 Server.prototype.copyMatrixBoard = function (data) {
   var roomId = data.roomId;
   if (this.isRoomExist(roomId)) {
-    console.log('COPY MATRIX BOARD..');
+    // console.log('COPY MATRIX BOARD..');
     this.rooms[roomId]['matrix'] = data.matrix;
-    console.table(this.rooms[roomId]['matrix']);
+    // console.table(this.rooms[roomId]['matrix']);
   }
 };
 
@@ -260,13 +260,23 @@ Server.prototype.removePlayerFromGame = function (socket, data) {
   if (this.isRoomExist(roomId)) {
     var player = data.player;
     var players = this.rooms[roomId]['players'];
+    var isGameStarted = data.isGameStarted;
     var index = players.findIndex((p) => p['color'] == player);
     if (index > -1) {
-      players.splice(index, 1);
+      var removedPlayer = players.splice(index, 1).pop();
+      var playersLimit = this.rooms[roomId]['playersLimit'];
+      if (isGameStarted) {
+        playersLimit = playersLimit - 1;
+        this.rooms[roomId]['playersLimit'] = playersLimit;
+      }
+      console.log('Removed Player ', removedPlayer, 'Players Limt ', playersLimit);
       var payload = {
         roomId: roomId,
-        players: players
+        players: players,
+        playersLimit: playersLimit,
+        removedPlayer: removedPlayer,
       };
+      console.log(payload);
       socket.broadcast.to(roomId).emit('on_player_removed', payload);
     }
   }
@@ -277,7 +287,7 @@ Server.prototype.removeGame = function (socket, data) {
   if (this.isRoomExist(roomId)) {
     delete this.rooms[roomId];
     socket.broadcast.to(roomId).emit('on_game_removed', {
-      status: 'success'
+      status: 'success',
     });
   }
   console.log('REMOVE GAME ', this.rooms);

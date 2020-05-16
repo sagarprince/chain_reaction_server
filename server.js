@@ -64,10 +64,10 @@ Server.prototype.realTimeRoutes = function () {
       self.copyMatrixBoard(data);
     });
 
-    socket.on('remove_player_from_game', function () {
+    socket.on('leave_game', function () {
       let args = Array.prototype.slice.call(arguments);
       let data = JSON.parse(args.pop());
-      self.removePlayerFromGame(socket, data);
+      self.leaveGame(socket, data);
     });
 
     socket.on('remove_game', function () {
@@ -255,7 +255,7 @@ Server.prototype.copyMatrixBoard = function (data) {
   }
 };
 
-Server.prototype.removePlayerFromGame = function (socket, data) {
+Server.prototype.leaveGame = function (socket, data) {
   var roomId = data.roomId;
   if (this.isRoomExist(roomId)) {
     var player = data.player;
@@ -276,8 +276,7 @@ Server.prototype.removePlayerFromGame = function (socket, data) {
         playersLimit: playersLimit,
         removedPlayer: removedPlayer,
       };
-      console.log(payload);
-      socket.broadcast.to(roomId).emit('on_player_removed', payload);
+      socket.broadcast.to(roomId).emit('on_player_leave_game', payload);
     }
   }
 };

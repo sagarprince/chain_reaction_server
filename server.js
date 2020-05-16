@@ -64,6 +64,12 @@ Server.prototype.realTimeRoutes = function () {
       self.copyMatrixBoard(data);
     });
 
+    socket.on('eliminated_player', function () {
+      let args = Array.prototype.slice.call(arguments);
+      let data = JSON.parse(args.pop());
+      self.eliminatedPlayer(socket, data);
+    });
+
     socket.on('leave_game', function () {
       let args = Array.prototype.slice.call(arguments);
       let data = JSON.parse(args.pop());
@@ -277,6 +283,25 @@ Server.prototype.leaveGame = function (socket, data) {
         removedPlayer: removedPlayer,
       };
       socket.broadcast.to(roomId).emit('on_player_leave_game', payload);
+    }
+  }
+};
+
+Server.prototype.eliminatedPlayer = function (socket, data) {
+  var roomId = data.roomId;
+  if (this.isRoomExist(roomId)) {
+    var player = data.player;
+    var players = this.rooms[roomId]['players'];
+    var index = players.findIndex((p) => p['color'] == player);
+    if (index > -1) {
+      var eliminatedPlayer = players[index];
+      var payload = {
+        roomId: roomId,
+        players: players,
+        eliminatedPlayer: eliminatedPlayer
+      };
+      console.log('Player Eliminated ', eliminatedPlayer);
+      socket.broadcast.to(roomId).emit('on_eliminated_player', payload);
     }
   }
 };
